@@ -106,26 +106,15 @@ OnPost listening on http://localhost:10000
 
 ## Part 4 — Create your accounts
 
-1. In the Render dashboard, open your web service → the **Shell** tab.
-2. Run:
-   ```bash
-   npm run seed
-   ```
-   This creates clearly-marked demo accounts and a sample site so you can click
-   around immediately:
-   - Master: `master@example.com` / `Master123!`
-   - Officer: `officer@example.com` / `Officer123!`
-3. Sign in as the demo Master, then **immediately**:
-   - Click your name (top-right) → **Password** → change it to something strong.
-   - Register your real account (Sign out → Create an officer account), sign back
-     in as Master, open the site's **Team** tab, and promote your real account
-     to **Master**.
-4. The demo accounts are only for trying things out. For a clean production
-   start, don't run the seed on a fresh deploy — just register your first
-   account, then promote it to Master by temporarily… actually, simplest:
-   run the seed once, promote your real account, and leave the demo accounts
-   dormant (they can't do anything harmful, and only you know the passwords
-   after you change them).
+No terminal needed. The app bootstraps itself: **the very first account
+registered on a fresh database automatically becomes Master**. (Render's free
+plan doesn't include the Shell tab, so the `npm run seed` demo accounts are
+only usable from your own machine — skip them for production.)
+
+1. Open your live URL and click **Create an officer account**.
+2. Register with your real name and email. You land as **Master** automatically.
+3. Everyone who registers after that becomes an Officer — you promote them from
+   the site's **Team** tab.
 
 ---
 
