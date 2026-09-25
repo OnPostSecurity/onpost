@@ -621,4 +621,12 @@ async function tabTeam(body, site) {
 }
 
 /* ---------- boot ---------- */
+async function boot() {
+  try {
+    await refreshMe();
+  } catch (err) {
+    state.user = null; // not signed in — route() shows the login view
+  }
+  route();
+}
 boot();

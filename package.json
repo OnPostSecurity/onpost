@@ -1,1 +1,30 @@
-{"dependencies":{"bcryptjs":"^3.0.3","cookie-parser":"^1.4.6","dotenv":"^16.4.5","express":"^4.21.2","jsonwebtoken":"^9.0.2","multer":"^2.0.1","pg":"^8.13.1"},"description":"Security guard operations: clock in/out, photographic checkpoints, daily shift briefings, standing post orders, and report logs.","devDependencies":{"pg-mem":"^3.0.14","supertest":"^7.2.2"},"engines":{"node":">=18"},"license":"UNLICENSED","main":"src/server.js","name":"onpost","scripts":{"migrate":"node src/migrate-cli.js","seed":"node scripts/seed.js","start":"node src/server.js","test":"node --test tests/api.test.js"},"type":"module","version":"1.0.0"}
+{
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.6",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.1",
+    "pg": "^8.13.1"
+  },
+  "description": "Security guard operations: clock in/out, photographic checkpoints, daily shift briefings, standing post orders, and report logs.",
+  "devDependencies": {
+    "pg-mem": "^3.0.14",
+    "supertest": "^7.2.2"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED",
+  "main": "src/server.js",
+  "name": "onpost",
+  "scripts": {
+    "migrate": "node src/migrate-cli.js",
+    "seed": "node scripts/seed.js",
+    "start": "node src/server.js",
+    "test": "node --test tests/api.test.js tests/frontend.test.js"
+  },
+  "type": "module",
+  "version": "1.0.0"
+}
