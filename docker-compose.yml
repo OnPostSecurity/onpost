@@ -1,0 +1,40 @@
+# One-command local run:  docker compose up --build
+# App: http://localhost:3000
+#
+# JWT_SECRET can be set in a local .env file next to this compose file.
+# The default below is for local development ONLY — never use it in production.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: gsm
+      POSTGRES_PASSWORD: gsm
+      POSTGRES_DB: guardshift
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gsm"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://gsm:gsm@db:5432/guardshift
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
+      NODE_ENV: production
+      UPLOAD_DIR: /app/uploads
+      ALLOW_REGISTRATION: "true"
+    volumes:
+      - uploads:/app/uploads
+
+volumes:
+  pgdata:
+  uploads:
