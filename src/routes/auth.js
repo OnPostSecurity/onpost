@@ -35,10 +35,14 @@ router.post('/register', async (req, res, next) => {
     }
     const id = randomUUID();
     const password_hash = await bcrypt.hash(password, 12);
+    // Bootstrap: the very first account on a fresh database becomes Master,
+    // so there's always a way in without shell access. Everyone after is Officer.
+    const { rows: countRows } = await pool.query('SELECT COUNT(*)::int AS n FROM users');
+    const role = countRows[0].n === 0 ? 'master' : 'officer';
     const { rows } = await pool.query(
       `INSERT INTO users (id, name, email, password_hash, role)
-       VALUES ($1, $2, $3, $4, 'officer') RETURNING id, name, email, role, created_at`,
-      [id, name.trim(), email.trim().toLowerCase(), password_hash]
+       VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email, role, created_at`,
+      [id, name.trim(), email.trim().toLowerCase(), password_hash, role]
     );
     setAuthCookie(res, rows[0]);
     res.status(201).json({ user: publicUser(rows[0]) });

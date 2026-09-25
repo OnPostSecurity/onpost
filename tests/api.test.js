@@ -308,3 +308,27 @@ describe('team management', () => {
     assert.ok(sites.body.sites.some((s) => s.id === otherSiteId));
   });
 });
+
+describe('first-user bootstrap', () => {
+  test('first registration on a fresh database becomes master', async () => {
+    const db = newDb();
+    const { Pool } = db.adapters.createPg();
+    const freshPool = new Pool();
+    await migrate(freshPool);
+    const uploadDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gsm-bootstrap-test-'));
+    const freshApp = createApp({ pool: freshPool, uploadDir });
+
+    const first = await request(freshApp)
+      .post('/api/auth/register')
+      .send({ name: 'First', email: 'first@test.com', password: 'Password123' })
+      .expect(201);
+    assert.equal(first.body.user.role, 'master');
+
+    const second = await request(freshApp)
+      .post('/api/auth/register')
+      .send({ name: 'Second', email: 'second@test.com', password: 'Password123' })
+      .expect(201);
+    assert.equal(second.body.user.role, 'officer');
+    await freshPool.end();
+  });
+});
