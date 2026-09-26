@@ -199,9 +199,21 @@ async function viewDashboard() {
           <strong>⏱ On shift</strong> — ${esc(shift.site_name)} since ${fmtTime(shift.clock_in)}
           <br /><button class="btn warn" id="clockOutBtn" type="button">Clock out</button>
         </div>`;
-      document.getElementById('clockOutBtn').onclick = async () => {
-        try { await api('POST', '/api/shifts/clock-out'); route(); }
-        catch (err) { showError(err.message); }
+      document.getElementById('clockOutBtn').onclick = () => {
+        const bannerEl = document.getElementById('banner');
+        bannerEl.innerHTML = `
+          <div class="shift-banner">
+            <strong>Clock out now?</strong> Your shift will end.
+            <br /><span class="row" style="margin-top:8px">
+              <button class="btn warn" id="clockOutYes" type="button">Yes, clock out</button>
+              <button class="btn secondary" id="clockOutNo" type="button">Cancel</button>
+            </span>
+          </div>`;
+        document.getElementById('clockOutYes').onclick = async () => {
+          try { await api('POST', '/api/shifts/clock-out'); route(); }
+          catch (err) { showError(err.message); }
+        };
+        document.getElementById('clockOutNo').onclick = () => route();
       };
     }
 
@@ -229,10 +241,22 @@ async function viewDashboard() {
       b.onclick = (e) => { e.stopPropagation(); location.hash = `#/site/${b.dataset.open}?tab=briefing`; };
     });
     list.querySelectorAll('[data-clockin]').forEach((b) => {
-      b.onclick = async (e) => {
+      b.onclick = (e) => {
         e.stopPropagation();
-        try { await api('POST', '/api/shifts/clock-in', { site_id: b.dataset.clockin }); route(); }
-        catch (err) { showError(err.message); }
+        const siteId = b.dataset.clockin;
+        const wrap = document.createElement('span');
+        wrap.className = 'row';
+        wrap.innerHTML = `
+          <span class="muted">Clock in?</span>
+          <button class="btn small ok" type="button" data-yes>Yes</button>
+          <button class="btn small secondary" type="button" data-no>Cancel</button>`;
+        b.replaceWith(wrap);
+        wrap.querySelector('[data-yes]').onclick = async (ev) => {
+          ev.stopPropagation();
+          try { await api('POST', '/api/shifts/clock-in', { site_id: siteId }); route(); }
+          catch (err) { showError(err.message); }
+        };
+        wrap.querySelector('[data-no]').onclick = (ev) => { ev.stopPropagation(); route(); };
       };
     });
     list.querySelectorAll('.site-card').forEach((c) => {
