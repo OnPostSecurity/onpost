@@ -50,10 +50,16 @@ export function createApp({ pool = null, uploadDir = null } = {}) {
 
   app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
-  // Frontend (single-page app)
-  app.use(express.static(PUBLIC_DIR));
+  // Frontend (single-page app). HTML/JS/CSS are never cached so that updates
+  // go live for everyone immediately — no more stale versions lingering.
+  app.use(express.static(PUBLIC_DIR, {
+    setHeaders(res, filePath) {
+      if (/\.(html|js|css)$/.test(filePath)) res.setHeader('Cache-Control', 'no-cache');
+    },
+  }));
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Not found.' });
+    res.setHeader('Cache-Control', 'no-cache');
     res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
   });
 
