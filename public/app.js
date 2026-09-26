@@ -428,6 +428,7 @@ async function tabCheckpoints(body, site) {
     else if (newLoc) fd.append('new_location', newLoc);
     else { showError('Pick a saved location or type a new one.'); return; }
     fd.append('note', document.getElementById('cpnote').value);
+    fd.append('tz', Intl.DateTimeFormat().resolvedOptions().timeZone);
     try {
       await apiForm(`/api/sites/${site.id}/checkpoints`, fd);
       viewSite(site.id, 'checkpoints', new URLSearchParams());

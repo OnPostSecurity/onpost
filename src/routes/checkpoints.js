@@ -3,6 +3,7 @@ import multer from 'multer';
 import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import sharp from 'sharp';
 import { getPool } from '../db.js';
 import { requireRole, siteAccess } from '../auth.js';
 
@@ -35,6 +36,42 @@ function getUpload() {
     });
   }
   return _upload;
+}
+
+// ---- Photo timestamp stamp --------------------------------------------------
+// Burns a timestamp bar (location, date/time, officer) into the image itself so
+// the proof travels with the file, not just the database record. Best-effort:
+// if stamping fails the checkpoint still goes through unstamped.
+function escXml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]));
+}
+
+async function stampPhoto(filePath, { locationName, officerName, timeZone }) {
+  const meta = await sharp(filePath).metadata();
+  const w = meta.width || 800;
+  const barH = Math.max(30, Math.round(w * 0.08));
+  const fontSize = Math.round(barH * 0.42);
+  const when = new Intl.DateTimeFormat('en-US', {
+    timeZone, month: 'short', day: 'numeric', year: 'numeric',
+    hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
+  }).format(new Date());
+  const line = `${locationName}   •   ${when}   •   ${officerName}`;
+  const svg =
+    `<svg width="${w}" height="${barH}" xmlns="http://www.w3.org/2000/svg">` +
+    `<rect width="100%" height="100%" fill="black" fill-opacity="0.62"/>` +
+    `<text x="10" y="${Math.round(barH / 2 + fontSize * 0.35)}" font-family="sans-serif" font-size="${fontSize}" fill="white">${escXml(line)}</text></svg>`;
+  const tmp = `${filePath}.tmp${path.extname(filePath) || '.jpg'}`;
+  await sharp(filePath).rotate().composite([{ input: Buffer.from(svg), gravity: 'south' }]).toFile(tmp);
+  fs.renameSync(tmp, filePath);
+}
+
+function validTimeZone(tz) {
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: tz });
+    return tz;
+  } catch {
+    return 'America/Denver';
+  }
 }
 
 // ---- Standing checkpoint locations -----------------------------------------
@@ -197,6 +234,15 @@ async function handleCheckpointPost(req, res, next) {
        RETURNING id, site_id, location_id, location_name, note, user_id, created_at`,
       [randomUUID(), req.site.id, locationId, locationName, req.file.filename, note.trim(), req.user.id]
     );
+    try {
+      await stampPhoto(req.file.path, {
+        locationName,
+        officerName: req.user.name,
+        timeZone: validTimeZone(req.body?.tz),
+      });
+    } catch (err) {
+      console.error('photo timestamp stamp failed:', err.message);
+    }
     res.status(201).json({
       checkpoint: { ...rows[0], photo_url: `/uploads/${req.file.filename}` },
     });
