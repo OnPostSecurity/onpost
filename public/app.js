@@ -53,8 +53,9 @@ function route() {
   renderUserbox();
   const { seg, params } = parseHash();
   if (!state.user) {
+    if (seg[0] === 'login') return viewLogin();
     if (seg[0] === 'register') return viewRegister();
-    return viewLogin();
+    return viewLanding();
   }
   if (seg[0] === 'site' && seg[1]) return viewSite(seg[1], params.get('tab') || 'briefing', params);
   if (seg[0] === 'password') return viewPassword();
@@ -83,6 +84,55 @@ async function refreshMe() {
   state.assignedSites = assignedSites;
 }
 
+/* ---------- landing page (public front door) ---------- */
+function viewLanding() {
+  view.innerHTML = `
+  <div class="landing">
+    <div class="hero">
+      <div class="eyebrow">For contract security companies</div>
+      <h1>Know exactly who's on post.</h1>
+      <p class="sub">OnPost is shift management built for guard operations — time clock, timestamped photo checkpoints, daily briefings, and incident reports in one app your officers already know how to use.</p>
+      <div class="cta-row">
+        <a class="btn light" href="#contact">Start your free 30-day pilot</a>
+        <a class="btn outline-light" href="#/login">Sign in</a>
+      </div>
+    </div>
+
+    <h2 class="section-title">Everything a shift needs</h2>
+    <div class="feat-grid">
+      <div class="feat"><h3>⏱ Time clock</h3><p>One-tap clock in and out at each site, with a confirmation step so there are no accidental punches.</p></div>
+      <div class="feat"><h3>📸 Timestamped checkpoints</h3><p>Photo checkpoints stamped with location, date, time, and officer name — proof that travels with the image.</p></div>
+      <div class="feat"><h3>📰 Daily briefings</h3><p>Supervisors post the day's briefing. Officers read it before every shift.</p></div>
+      <div class="feat"><h3>📝 Incident reports</h3><p>File and track reports from the field, visible to supervisors the moment they're filed.</p></div>
+      <div class="feat"><h3>📋 Post orders</h3><p>Standing site instructions that carry over day to day. Only the Master can change them.</p></div>
+      <div class="feat"><h3>🛡 Roles &amp; permissions</h3><p>Officer, Supervisor, and Master tiers — everyone sees exactly what their job needs, nothing more.</p></div>
+    </div>
+
+    <h2 class="section-title">Up and running in a day</h2>
+    <div class="steps">
+      <div class="step"><span class="n">1</span><div><strong>We set up your private site.</strong><p class="muted">Your company gets its own secure OnPost deployment.</p></div></div>
+      <div class="step"><span class="n">2</span><div><strong>You invite your team.</strong><p class="muted">Accounts are invite-only — you control every seat.</p></div></div>
+      <div class="step"><span class="n">3</span><div><strong>Guards clock in from their phones.</strong><p class="muted">No hardware, no training manual. It just works.</p></div></div>
+    </div>
+
+    <h2 class="section-title">Simple per-seat pricing</h2>
+    <div class="price-grid">
+      <div class="price-card"><h3>Officer</h3><div class="price">$5<span>/seat/mo</span></div><p class="muted">Clock in/out, checkpoints, reports.</p></div>
+      <div class="price-card"><h3>Supervisor</h3><div class="price">$8<span>/seat/mo</span></div><p class="muted">Plus sites, briefings, and team oversight.</p></div>
+      <div class="price-card"><h3>Master</h3><div class="price">$10<span>/seat/mo</span></div><p class="muted">Full control of your operation.</p></div>
+    </div>
+    <p class="muted" style="text-align:center">No setup fees. Cancel with 30 days' notice.</p>
+
+    <div class="card" id="contact" style="text-align:center;margin-top:28px">
+      <h2>Start your free 30-day pilot</h2>
+      <p class="muted">Contact Stallion Security Services LLC and we'll have your team on post within a day.</p>
+      <p style="font-size:17px"><strong>📞 CONTACT-PHONE</strong><br /><strong>✉️ CONTACT-EMAIL</strong></p>
+    </div>
+
+    <div class="landing-footer">© 2026 Stallion Security Services LLC · OnPost</div>
+  </div>`;
+}
+
 /* ---------- auth views ---------- */
 function viewLogin() {
   view.innerHTML = `
@@ -95,7 +145,8 @@ function viewLogin() {
         <input type="password" id="password" autocomplete="current-password" required />
         <button class="btn block" type="submit">Sign in</button>
       </form>
-      <p class="muted" style="margin-top:14px">New here? <a href="#/register">Create an officer account</a></p>
+      <p class="muted" style="margin-top:14px">Accounts are invite-only — ask your administrator for access.</p>
+      <p class="muted"><a href="#/">← Back to home</a></p>
     </div>`;
   document.getElementById('loginForm').onsubmit = async (e) => {
     e.preventDefault();

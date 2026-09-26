@@ -73,10 +73,10 @@ async function bootFrontend({ signedIn }) {
   return { html: view.innerHTML, errors };
 }
 
-test('frontend boots to the sign-in view when not signed in', async () => {
+test('frontend boots to the landing page when not signed in', async () => {
   const { html } = await bootFrontend({ signedIn: false });
-  assert.match(html, /Sign in/, 'expected the sign-in form to render');
-  assert.match(html, /Create an officer account/, 'expected the registration link');
+  assert.match(html, /30-day pilot/, 'expected the landing page to render');
+  assert.match(html, /Sign in/, 'expected a sign-in link on the landing page');
 });
 
 test('frontend boots to the dashboard when signed in', async () => {

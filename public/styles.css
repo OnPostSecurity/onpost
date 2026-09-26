@@ -203,3 +203,46 @@ table.shifts th, table.shifts td { text-align: left; padding: 8px 6px; border-bo
 .check input { width: 18px; height: 18px; }
 .back { display: inline-block; margin-bottom: 12px; color: var(--accent); text-decoration: none; font-weight: 600; }
 .empty { text-align: center; color: var(--muted); padding: 28px 12px; font-size: 15px; }
+
+/* ----- landing page ----- */
+.landing { padding-bottom: 16px; }
+.hero {
+  background: var(--brand);
+  color: #fff;
+  border-radius: var(--radius);
+  padding: 44px 24px;
+  text-align: center;
+  margin-bottom: 28px;
+}
+.hero .eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  font-size: 12px;
+  color: #93c5fd;
+  margin-bottom: 12px;
+}
+.hero h1 { margin: 0 0 12px; font-size: 30px; line-height: 1.2; }
+.hero p.sub { color: #cbd5e1; font-size: 16px; max-width: 580px; margin: 0 auto 22px; line-height: 1.5; }
+.cta-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.btn.light { background: #fff; color: var(--ink); text-decoration: none; display: inline-block; }
+.btn.outline-light { background: transparent; color: #fff; border: 1px solid #475569; text-decoration: none; display: inline-block; }
+.section-title { font-size: 20px; margin: 28px 0 14px; text-align: center; }
+.feat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.feat { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+.feat h3 { margin: 0 0 6px; font-size: 15px; }
+.feat p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.steps { display: grid; gap: 12px; }
+.step { display: flex; gap: 14px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; align-items: flex-start; }
+.step .n {
+  flex: 0 0 32px; height: 32px; border-radius: 999px;
+  background: var(--brand); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-weight: 700;
+}
+.step p { margin: 4px 0 0; }
+.price-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.price-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; text-align: center; }
+.price-card h3 { margin: 0 0 8px; font-size: 15px; }
+.price-card .price { font-size: 30px; font-weight: 800; margin-bottom: 8px; }
+.price-card .price span { font-size: 14px; font-weight: 400; color: var(--muted); }
+.price-card p { margin: 0; }
+.landing-footer { text-align: center; color: var(--muted); font-size: 13px; padding: 24px 0 8px; }
