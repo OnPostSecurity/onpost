@@ -567,14 +567,36 @@ async function tabShifts(body, site) {
       </table>` : '<div class="empty">No shifts recorded for this site yet.</div>'}
     </div>`;
   const ci = document.getElementById('ciBtn');
-  if (ci) ci.onclick = async () => {
-    try { await api('POST', '/api/shifts/clock-in', { site_id: site.id }); viewSite(site.id, 'shifts', new URLSearchParams()); }
-    catch (err) { showError(err.message); }
+  if (ci) ci.onclick = () => {
+    const card = ci.closest('.card');
+    card.innerHTML = `
+      <h3>Time clock</h3>
+      <p>Clock in at <strong>${esc(site.name)}</strong>?</p>
+      <div class="row">
+        <button class="btn ok" id="ciYes" type="button" style="flex:1">Yes, clock in</button>
+        <button class="btn secondary" id="ciNo" type="button">Cancel</button>
+      </div>`;
+    document.getElementById('ciYes').onclick = async () => {
+      try { await api('POST', '/api/shifts/clock-in', { site_id: site.id }); viewSite(site.id, 'shifts', new URLSearchParams()); }
+      catch (err) { showError(err.message); }
+    };
+    document.getElementById('ciNo').onclick = () => viewSite(site.id, 'shifts', new URLSearchParams());
   };
   const co = document.getElementById('coBtn');
-  if (co) co.onclick = async () => {
-    try { await api('POST', '/api/shifts/clock-out'); viewSite(site.id, 'shifts', new URLSearchParams()); }
-    catch (err) { showError(err.message); }
+  if (co) co.onclick = () => {
+    const card = co.closest('.card');
+    card.innerHTML = `
+      <h3>Time clock</h3>
+      <p>Clock out now? Your shift will end.</p>
+      <div class="row">
+        <button class="btn warn" id="coYes" type="button" style="flex:1">Yes, clock out</button>
+        <button class="btn secondary" id="coNo" type="button">Cancel</button>
+      </div>`;
+    document.getElementById('coYes').onclick = async () => {
+      try { await api('POST', '/api/shifts/clock-out'); viewSite(site.id, 'shifts', new URLSearchParams()); }
+      catch (err) { showError(err.message); }
+    };
+    document.getElementById('coNo').onclick = () => viewSite(site.id, 'shifts', new URLSearchParams());
   };
 
   body.querySelectorAll('[data-delshift]').forEach((b) => {
