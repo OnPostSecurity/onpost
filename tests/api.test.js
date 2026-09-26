@@ -307,6 +307,48 @@ describe('team management', () => {
     const sites = await o.get('/api/sites').expect(200);
     assert.ok(sites.body.sites.some((s) => s.id === otherSiteId));
   });
+
+  test('master can create an account directly', async () => {
+    const m = await loginAgent('master@test.com');
+    const res = await m.post('/api/users')
+      .send({ name: 'New Hire', email: 'newhire@test.com', password: 'Password123', role: 'supervisor' })
+      .expect(201);
+    assert.equal(res.body.user.email, 'newhire@test.com');
+    assert.equal(res.body.user.role, 'supervisor');
+    assert.ok(!('password_hash' in res.body.user), 'must not leak password hash');
+    // and the new account can sign in
+    await request(app).post('/api/auth/login')
+      .send({ email: 'newhire@test.com', password: 'Password123' })
+      .expect(200);
+  });
+
+  test('account creation defaults to officer', async () => {
+    const m = await loginAgent('master@test.com');
+    const res = await m.post('/api/users')
+      .send({ name: 'Rookie', email: 'rookie@test.com', password: 'Password123' })
+      .expect(201);
+    assert.equal(res.body.user.role, 'officer');
+  });
+
+  test('supervisor and officer cannot create accounts', async () => {
+    const s = await loginAgent('super@test.com');
+    await s.post('/api/users')
+      .send({ name: 'X', email: 'x@test.com', password: 'Password123' })
+      .expect(403);
+    const o = await loginAgent('officer@test.com');
+    await o.post('/api/users')
+      .send({ name: 'Y', email: 'y@test.com', password: 'Password123' })
+      .expect(403);
+  });
+
+  test('account creation validates input', async () => {
+    const m = await loginAgent('master@test.com');
+    await m.post('/api/users').send({ name: 'Z', email: 'z@test.com' }).expect(400); // no password
+    await m.post('/api/users').send({ name: 'Z', email: 'z@test.com', password: 'short' }).expect(400);
+    await m.post('/api/users').send({ name: 'Z', email: 'not-an-email', password: 'Password123' }).expect(400);
+    await m.post('/api/users').send({ name: 'Z', email: 'z2@test.com', password: 'Password123', role: 'ceo' }).expect(400);
+    await m.post('/api/users').send({ name: 'Dup', email: 'officer@test.com', password: 'Password123' }).expect(409);
+  });
 });
 
 describe('first-user bootstrap', () => {

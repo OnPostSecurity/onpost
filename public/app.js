@@ -584,6 +584,24 @@ async function tabTeam(body, site) {
   ]);
   const roleOptions = isMaster ? ['officer', 'supervisor', 'master'] : ['officer', 'supervisor'];
   body.innerHTML = `
+    ${isMaster ? `
+    <div class="card">
+      <h3>Create account</h3>
+      <p class="muted">New accounts are created with a temporary password — share it with them directly (call, text, in person). They should change it after signing in.</p>
+      <label>Full name</label>
+      <input type="text" id="nu-name" autocomplete="off" />
+      <label>Email</label>
+      <input type="email" id="nu-email" autocomplete="off" />
+      <label>Temporary password (min 8 characters)</label>
+      <input type="text" id="nu-password" autocomplete="off" />
+      <label>Role</label>
+      <select id="nu-role">
+        <option value="officer">Officer</option>
+        <option value="supervisor">Supervisor</option>
+        <option value="master">Master</option>
+      </select>
+      <button class="btn" id="nu-create" type="button" style="margin-top:8px">Create account</button>
+    </div>` : ''}
     <div class="card">
       <h3>Team</h3>
       <p class="muted">New accounts start as <strong>unassigned Officers</strong>. Assign them to sites here. ${isMaster ? 'As Master you can also change roles.' : 'Supervisors can promote Officers to Supervisor, but only a Master can grant the Master role.'}</p>
@@ -603,8 +621,23 @@ async function tabTeam(body, site) {
       </div>`).join('')}
     </div>`;
 
-  body.querySelectorAll('[data-user]').forEach((card) => {
-    const userId = card.dataset.user;
+  if (isMaster) {
+    body.querySelector('#nu-create').onclick = async () => {
+      try {
+        const payload = {
+          name: body.querySelector('#nu-name').value,
+          email: body.querySelector('#nu-email').value,
+          password: body.querySelector('#nu-password').value,
+          role: body.querySelector('#nu-role').value,
+        };
+        const { user } = await api('POST', '/api/users', payload);
+        showOk(`Created ${user.name} (${user.role}). Share their temporary password with them directly.`);
+        await tabTeam(body, site);
+      } catch (err) { showError(err.message); }
+    };
+  }
+
+  body.querySelectorAll('[data-user]').forEach((card) => {    const userId = card.dataset.user;
     card.querySelector('[data-saveuser]').onclick = async () => {
       try {
         const role = card.querySelector('[data-role]').value;

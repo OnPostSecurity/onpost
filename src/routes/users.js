@@ -1,12 +1,51 @@
 import { Router } from 'express';
+import bcrypt from 'bcryptjs';
+import { randomUUID } from 'node:crypto';
 import { getPool } from '../db.js';
 import { requireRole } from '../auth.js';
 
 const router = Router();
 const VALID_ROLES = ['master', 'supervisor', 'officer'];
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Everyone on these routes must be master or supervisor (mounted with requireAuth already).
 router.use(requireRole('master', 'supervisor'));
+
+// POST /api/users — Master only: create an account directly (invite-only
+// onboarding once open registration is turned off).
+router.post('/', requireRole('master'), async (req, res, next) => {
+  try {
+    const { name, email, password, role } = req.body ?? {};
+    if (!name?.trim() || !email?.trim() || !password) {
+      return res.status(400).json({ error: 'Name, email and password are required.' });
+    }
+    if (!EMAIL_RE.test(email.trim())) {
+      return res.status(400).json({ error: 'That email address does not look valid.' });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+    }
+    const finalRole = role || 'officer';
+    if (!VALID_ROLES.includes(finalRole)) {
+      return res.status(400).json({ error: 'Invalid role.' });
+    }
+    const pool = getPool();
+    const existing = await pool.query('SELECT 1 FROM users WHERE email = $1', [email.trim().toLowerCase()]);
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ error: 'An account with that email already exists.' });
+    }
+    const id = randomUUID();
+    const password_hash = await bcrypt.hash(password, 12);
+    const { rows } = await pool.query(
+      `INSERT INTO users (id, name, email, password_hash, role)
+       VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email, role, created_at`,
+      [id, name.trim(), email.trim().toLowerCase(), password_hash, finalRole]
+    );
+    res.status(201).json({ user: rows[0] });
+  } catch (err) {
+    next(err);
+  }
+});
 
 // GET /api/users — roster with roles + site assignments
 router.get('/', async (req, res, next) => {
