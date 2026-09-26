@@ -126,7 +126,7 @@ function viewLanding() {
     <div class="card" id="contact" style="text-align:center;margin-top:28px">
       <h2>Start your free 30-day pilot</h2>
       <p class="muted">Contact Stallion Security Services LLC and we'll have your team on post within a day.</p>
-      <p style="font-size:17px"><strong>📞 CONTACT-PHONE</strong><br /><strong>✉️ CONTACT-EMAIL</strong></p>
+      <p style="font-size:17px"><strong>📞 <a href="tel:+19703918860">970-391-8860</a></strong><br /><strong>✉️ <a href="mailto:stallionsecuritygroup@gmail.com">stallionsecuritygroup@gmail.com</a></strong></p>
     </div>
 
     <div class="landing-footer">© 2026 Stallion Security Services LLC · OnPost</div>
