@@ -110,6 +110,33 @@ router.patch('/:id/role', async (req, res, next) => {
   }
 });
 
+// DELETE /api/users/:id — Master only. Cannot delete yourself or the last Master.
+// The user's shifts, checkpoints and reports are deleted with them (ON DELETE
+// CASCADE); post orders / briefings they touched keep working (SET NULL).
+router.delete('/:id', requireRole('master'), async (req, res, next) => {
+  try {
+    const pool = getPool();
+    const { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ error: 'User not found.' });
+    const target = rows[0];
+    if (target.id === req.user.id) {
+      return res.status(403).json({ error: 'You cannot delete your own account.' });
+    }
+    if (target.role === 'master') {
+      const { rows: masters } = await pool.query(
+        "SELECT COUNT(*)::int AS n FROM users WHERE role = 'master'"
+      );
+      if (masters[0].n <= 1) {
+        return res.status(400).json({ error: 'You cannot delete the last Master account.' });
+      }
+    }
+    await pool.query('DELETE FROM users WHERE id = $1', [target.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // POST /api/users/:id/sites — replace an officer's site assignments
 router.post('/:id/sites', async (req, res, next) => {
   try {

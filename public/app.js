@@ -618,6 +618,7 @@ async function tabTeam(body, site) {
           <label class="check"><input type="checkbox" data-site="${esc(s.id)}" ${u.sites.some((x) => x.id === s.id) ? 'checked' : ''} /> ${esc(s.name)}</label>
         `).join('')}
         <button class="btn small" data-saveuser type="button" style="margin-top:8px">Save</button>
+        ${isMaster && u.id !== state.user.id ? `<button class="btn small danger" data-deluser type="button" style="margin-top:8px;margin-left:8px">Delete</button>` : ''}
       </div>`).join('')}
     </div>`;
 
@@ -650,6 +651,18 @@ async function tabTeam(body, site) {
         showOk(`Saved ${user.name}.`);
       } catch (err) { showError(err.message); }
     };
+    const delBtn = card.querySelector('[data-deluser]');
+    if (delBtn) {
+      delBtn.onclick = async () => {
+        const user = users.find((u) => u.id === userId);
+        if (!window.confirm(`Delete ${user.name} (${user.email}) and all of their records? This cannot be undone.`)) return;
+        try {
+          await api('DELETE', `/api/users/${userId}`);
+          showOk(`Deleted ${user.name}.`);
+          await tabTeam(body, site);
+        } catch (err) { showError(err.message); }
+      };
+    }
   });
 }
 

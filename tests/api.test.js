@@ -349,6 +349,39 @@ describe('team management', () => {
     await m.post('/api/users').send({ name: 'Z', email: 'z2@test.com', password: 'Password123', role: 'ceo' }).expect(400);
     await m.post('/api/users').send({ name: 'Dup', email: 'officer@test.com', password: 'Password123' }).expect(409);
   });
+
+  test('master can delete an officer', async () => {
+    const m = await loginAgent('master@test.com');
+    const created = await m.post('/api/users')
+      .send({ name: 'Temp', email: 'temp@test.com', password: 'Password123' })
+      .expect(201);
+    await m.delete(`/api/users/${created.body.user.id}`).expect(200);
+    const { rows } = await pool.query('SELECT id FROM users WHERE email = $1', ['temp@test.com']);
+    assert.equal(rows.length, 0);
+  });
+
+  test('master cannot delete themselves or the last master', async () => {
+    const m = await loginAgent('master@test.com');
+    const { rows } = await pool.query('SELECT id FROM users WHERE email = $1', ['master@test.com']);
+    await m.delete(`/api/users/${rows[0].id}`).expect(403);
+    // create a second master, delete them (allowed), then last master is protected
+    const second = await m.post('/api/users')
+      .send({ name: 'Master2', email: 'master2@test.com', password: 'Password123', role: 'master' })
+      .expect(201);
+    await m.delete(`/api/users/${second.body.user.id}`).expect(200);
+    await m.delete(`/api/users/${rows[0].id}`).expect(403); // self — still blocked
+  });
+
+  test('supervisor cannot delete users', async () => {
+    const s = await loginAgent('super@test.com');
+    const { rows } = await pool.query('SELECT id FROM users WHERE email = $1', ['lonely@test.com']);
+    await s.delete(`/api/users/${rows[0].id}`).expect(403);
+  });
+
+  test('deleting a missing user is 404', async () => {
+    const m = await loginAgent('master@test.com');
+    await m.delete('/api/users/00000000-0000-0000-0000-000000000000').expect(404);
+  });
 });
 
 describe('first-user bootstrap', () => {
