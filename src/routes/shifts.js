@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { randomUUID } from 'node:crypto';
 import { getPool } from '../db.js';
+import { requireRole } from '../auth.js';
 
 const router = Router();
 
@@ -86,7 +87,7 @@ router.get('/', async (req, res, next) => {
     const { rows } = await pool.query(
       `SELECT s.*, u.name AS user_name, st.name AS site_name
        FROM shifts s
-       JOIN users u ON u.id = s.user_id
+       LEFT JOIN users u ON u.id = s.user_id
        JOIN sites st ON st.id = s.site_id
        ${where}
        ORDER BY s.clock_in DESC LIMIT 200`,
@@ -109,6 +110,19 @@ router.get('/open', async (req, res, next) => {
       [req.user.id]
     );
     res.json({ shift: rows[0] || null });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/shifts/:id — Master only.
+router.delete('/:id', requireRole('master'), async (req, res, next) => {
+  try {
+    const pool = getPool();
+    const { rows } = await pool.query('SELECT id FROM shifts WHERE id = $1', [req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Shift not found.' });
+    await pool.query('DELETE FROM shifts WHERE id = $1', [req.params.id]);
+    res.json({ ok: true });
   } catch (err) {
     next(err);
   }

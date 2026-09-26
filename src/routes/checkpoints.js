@@ -103,7 +103,7 @@ router.get('/checkpoints', siteAccess, async (req, res, next) => {
     }
     const { rows } = await pool.query(
       `SELECT c.*, u.name AS user_name
-       FROM checkpoints c JOIN users u ON u.id = c.user_id
+       FROM checkpoints c LEFT JOIN users u ON u.id = c.user_id
        WHERE ${clauses.join(' AND ')}
        ORDER BY c.created_at DESC LIMIT 200`,
       params
@@ -114,6 +114,25 @@ router.get('/checkpoints', siteAccess, async (req, res, next) => {
         photo_url: c.photo_path ? `/uploads/${path.basename(c.photo_path)}` : null,
       })),
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/sites/:siteId/checkpoints/:id — Master only. Removes the record and its photo.
+router.delete('/checkpoints/:id', requireRole('master'), siteAccess, async (req, res, next) => {
+  try {
+    const pool = getPool();
+    const { rows } = await pool.query(
+      'SELECT id, photo_path FROM checkpoints WHERE id = $1 AND site_id = $2',
+      [req.params.id, req.site.id]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Checkpoint not found.' });
+    if (rows[0].photo_path) {
+      fs.unlink(path.join(path.resolve(process.env.UPLOAD_DIR || './uploads'), rows[0].photo_path), () => {});
+    }
+    await pool.query('DELETE FROM checkpoints WHERE id = $1', [req.params.id]);
+    res.json({ ok: true });
   } catch (err) {
     next(err);
   }

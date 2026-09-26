@@ -111,8 +111,9 @@ router.patch('/:id/role', async (req, res, next) => {
 });
 
 // DELETE /api/users/:id — Master only. Cannot delete yourself or the last Master.
-// The user's shifts, checkpoints and reports are deleted with them (ON DELETE
-// CASCADE); post orders / briefings they touched keep working (SET NULL).
+// The user's shifts, reports and checkpoints SURVIVE: their author reference
+// is cleared first (they show as "Former officer"). Only a Master explicitly
+// deleting a record removes it.
 router.delete('/:id', requireRole('master'), async (req, res, next) => {
   try {
     const pool = getPool();
@@ -130,6 +131,9 @@ router.delete('/:id', requireRole('master'), async (req, res, next) => {
         return res.status(400).json({ error: 'You cannot delete the last Master account.' });
       }
     }
+    await pool.query('UPDATE shifts SET user_id = NULL WHERE user_id = $1', [target.id]);
+    await pool.query('UPDATE reports SET user_id = NULL WHERE user_id = $1', [target.id]);
+    await pool.query('UPDATE checkpoints SET user_id = NULL WHERE user_id = $1', [target.id]);
     await pool.query('DELETE FROM users WHERE id = $1', [target.id]);
     res.json({ ok: true });
   } catch (err) {

@@ -395,13 +395,26 @@ async function tabCheckpoints(body, site) {
     <div class="card">
       <h3>Today's checkpoints</h3>
       <div id="cpList">${checkpoints.map((c) => `
-        <div class="list-item">
+        <div class="list-item" data-cp="${esc(c.id)}">
           <div class="spread"><strong>${esc(c.location_name)}</strong><span class="muted">${fmtTime(c.created_at)}</span></div>
           ${c.note ? `<div>${esc(c.note)}</div>` : ''}
-          <div class="meta">${esc(c.user_name)}</div>
+          <div class="meta">${esc(c.user_name || "Former officer")}</div>
           ${c.photo_url ? `<img class="thumb" src="${esc(c.photo_url)}" loading="lazy" alt="Checkpoint photo" />` : ''}
+          ${isMaster ? `<button class="btn small danger" data-delcp type="button" style="margin-top:8px">Delete</button>` : ''}
         </div>`).join('') || '<div class="empty">No checkpoints logged today yet.</div>'}</div>
     </div>`;
+
+  body.querySelectorAll('[data-delcp]').forEach((btn) => {
+    btn.onclick = async () => {
+      const id = btn.closest('[data-cp]').dataset.cp;
+      if (!window.confirm('Delete this checkpoint and its photo? This cannot be undone.')) return;
+      try {
+        await api('DELETE', `/api/sites/${site.id}/checkpoints/${id}`);
+        showOk('Checkpoint deleted.');
+        await tabCheckpoints(body, site);
+      } catch (err) { showError(err.message); }
+    };
+  });
 
   document.getElementById('cpForm').onsubmit = async (e) => {
     e.preventDefault();
@@ -444,6 +457,7 @@ async function tabCheckpoints(body, site) {
 /* ----- reports ----- */
 async function tabReports(body, site, statusFilter) {
   const canManage = ['master', 'supervisor'].includes(state.user.role);
+  const isMaster = state.user.role === 'master';
   const { reports } = await api('GET', `/api/sites/${site.id}/reports${statusFilter === 'all' ? '' : `?status=${statusFilter}`}`);
   body.innerHTML = `
     <div class="card">
@@ -479,11 +493,12 @@ async function tabReports(body, site, statusFilter) {
             <span class="badge ${esc(r.status)}">${esc(r.status)}</span></span>
           </div>
           ${r.body ? `<div style="margin-top:6px">${esc(r.body)}</div>` : ''}
-          <div class="meta">${esc(r.user_name)} · ${fmtDT(r.created_at)}</div>
+          <div class="meta">${esc(r.user_name || "Former officer")} · ${fmtDT(r.created_at)}</div>
           ${canManage ? `<div class="row" style="margin-top:8px">
             ${r.status === 'open'
               ? `<button class="btn small ok" data-resolve="${esc(r.id)}" type="button">Mark resolved</button>`
               : `<button class="btn small secondary" data-reopen="${esc(r.id)}" type="button">Reopen</button>`}
+            ${isMaster ? `<button class="btn small danger" data-delrep="${esc(r.id)}" type="button">Delete</button>` : ''}
           </div>` : ''}
         </div>`).join('') || '<div class="empty">No reports here.</div>'}</div>
     </div>`;
@@ -519,10 +534,21 @@ async function tabReports(body, site, statusFilter) {
       } catch (err) { showError(err.message); }
     };
   });
+  body.querySelectorAll('[data-delrep]').forEach((b) => {
+    b.onclick = async () => {
+      if (!window.confirm('Delete this report? This cannot be undone.')) return;
+      try {
+        await api('DELETE', `/api/sites/${site.id}/reports/${b.dataset.delrep}`);
+        showOk('Report deleted.');
+        viewSite(site.id, 'reports', new URLSearchParams([['status', statusFilter]]));
+      } catch (err) { showError(err.message); }
+    };
+  });
 }
 
 /* ----- shifts ----- */
 async function tabShifts(body, site) {
+  const isMaster = state.user.role === 'master';
   const { shifts } = await api('GET', `/api/shifts?site_id=${site.id}`);
   const { shift: open } = await api('GET', '/api/shifts/open');
   body.innerHTML = `
@@ -536,8 +562,8 @@ async function tabShifts(body, site) {
     <div class="card">
       <h3>Shift history</h3>
       ${shifts.length ? `<table class="shifts">
-        <tr><th>Officer</th><th>In</th><th>Out</th></tr>
-        ${shifts.map((s) => `<tr><td>${esc(s.user_name)}</td><td>${fmtDT(s.clock_in)}</td><td>${s.clock_out ? fmtDT(s.clock_out) : '<em>on shift</em>'}</td></tr>`).join('')}
+        <tr><th>Officer</th><th>In</th><th>Out</th>${isMaster ? '<th></th>' : ''}</tr>
+        ${shifts.map((s) => `<tr><td>${esc(s.user_name || "Former officer")}</td><td>${fmtDT(s.clock_in)}</td><td>${s.clock_out ? fmtDT(s.clock_out) : '<em>on shift</em>'}</td>${isMaster ? `<td><button class="btn small danger" data-delshift="${esc(s.id)}" type="button">Delete</button></td>` : ''}</tr>`).join('')}
       </table>` : '<div class="empty">No shifts recorded for this site yet.</div>'}
     </div>`;
   const ci = document.getElementById('ciBtn');
@@ -550,6 +576,17 @@ async function tabShifts(body, site) {
     try { await api('POST', '/api/shifts/clock-out'); viewSite(site.id, 'shifts', new URLSearchParams()); }
     catch (err) { showError(err.message); }
   };
+
+  body.querySelectorAll('[data-delshift]').forEach((b) => {
+    b.onclick = async () => {
+      if (!window.confirm('Delete this shift record? This cannot be undone.')) return;
+      try {
+        await api('DELETE', `/api/shifts/${b.dataset.delshift}`);
+        showOk('Shift deleted.');
+        viewSite(site.id, 'shifts', new URLSearchParams());
+      } catch (err) { showError(err.message); }
+    };
+  });
 }
 
 /* ----- post orders (master-editable standing instructions) ----- */

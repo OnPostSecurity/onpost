@@ -18,7 +18,7 @@ router.get('/', siteAccess, async (req, res, next) => {
     }
     const { rows } = await pool.query(
       `SELECT r.*, u.name AS user_name FROM reports r
-       JOIN users u ON u.id = r.user_id
+       LEFT JOIN users u ON u.id = r.user_id
        WHERE ${clauses.join(' AND ')}
        ORDER BY r.created_at DESC LIMIT 200`,
       params
@@ -89,6 +89,22 @@ router.patch('/:reportId', requireRole('master', 'supervisor'), siteAccess, asyn
       params
     );
     res.json({ report: updated[0] });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/sites/:siteId/reports/:id — Master only.
+router.delete('/:id', requireRole('master'), siteAccess, async (req, res, next) => {
+  try {
+    const pool = getPool();
+    const { rows } = await pool.query(
+      'SELECT id FROM reports WHERE id = $1 AND site_id = $2',
+      [req.params.id, req.site.id]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Report not found.' });
+    await pool.query('DELETE FROM reports WHERE id = $1', [req.params.id]);
+    res.json({ ok: true });
   } catch (err) {
     next(err);
   }

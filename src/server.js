@@ -1,6 +1,8 @@
 import 'dotenv/config';
+import path from 'node:path';
 import { getPool } from './db.js';
 import { migrate } from './migrate.js';
+import { purgeOldPhotos } from './purge.js';
 import { createApp } from './app.js';
 
 async function waitForDb(pool, attempts = 30) {
@@ -20,6 +22,7 @@ async function main() {
   const pool = getPool();
   await waitForDb(pool);
   await migrate(pool); // schema is always brought up to date on boot
+  await purgeOldPhotos(pool); // checkpoint photos older than 30 days cycle out
 
   const app = createApp();
   const port = Number(process.env.PORT) || 3000;

@@ -384,6 +384,99 @@ describe('team management', () => {
   });
 });
 
+describe('record retention', () => {
+  test('deleting a user keeps their shifts, reports and checkpoints', async () => {
+    const m = await loginAgent('master@test.com');
+    const created = await m.post('/api/users')
+      .send({ name: 'Gone Officer', email: 'gone@test.com', password: 'Password123' })
+      .expect(201);
+    const uid = created.body.user.id;
+    const shiftId = randomUUID(), reportId = randomUUID(), cpId = randomUUID();
+    await pool.query('INSERT INTO shifts (id, site_id, user_id, clock_in, clock_out) VALUES ($1, $2, $3, $4, $5)',
+      [shiftId, siteId, uid, new Date(Date.now() - 8 * 3600000), new Date(Date.now() - 3600000)]);
+    await pool.query('INSERT INTO reports (id, site_id, user_id, title) VALUES ($1, $2, $3, $4)',
+      [reportId, siteId, uid, 'Gone report']);
+    await pool.query('INSERT INTO checkpoints (id, site_id, location_name, user_id) VALUES ($1, $2, $3, $4)',
+      [cpId, siteId, 'Gate', uid]);
+
+    await m.delete(`/api/users/${uid}`).expect(200);
+
+    for (const [tbl, id] of [['shifts', shiftId], ['reports', reportId], ['checkpoints', cpId]]) {
+      const { rows } = await pool.query(`SELECT user_id FROM ${tbl} WHERE id = $1`, [id]);
+      assert.equal(rows.length, 1, `${tbl} row survived user deletion`);
+      assert.equal(rows[0].user_id, null, `${tbl} author cleared`);
+    }
+    // orphaned rows still appear in listings (LEFT JOIN)
+    const shifts = await m.get(`/api/shifts?site_id=${siteId}`).expect(200);
+    assert.ok(shifts.body.shifts.some((s) => s.id === shiftId && s.user_name === null));
+    const reports = await m.get(`/api/sites/${siteId}/reports?status=all`).expect(200);
+    assert.ok(reports.body.reports.some((r) => r.id === reportId && r.user_name === null));
+    const cps = await m.get(`/api/sites/${siteId}/checkpoints`).expect(200);
+    assert.ok(cps.body.checkpoints.some((c) => c.id === cpId && c.user_name === null));
+  });
+
+  test('master can delete individual records; officers and supervisors cannot', async () => {
+    const m = await loginAgent('master@test.com');
+    const o = await loginAgent('officer@test.com');
+    const s = await loginAgent('super@test.com');
+    const { rows: ou } = await pool.query('SELECT id FROM users WHERE email = $1', ['officer@test.com']);
+    const uid = ou[0].id;
+
+    const shId = randomUUID();
+    await pool.query('INSERT INTO shifts (id, site_id, user_id) VALUES ($1, $2, $3)', [shId, siteId, uid]);
+    await o.delete(`/api/shifts/${shId}`).expect(403);
+    await s.delete(`/api/shifts/${shId}`).expect(403);
+    await m.delete(`/api/shifts/${shId}`).expect(200);
+    await m.delete(`/api/shifts/${shId}`).expect(404);
+
+    const rId = randomUUID();
+    await pool.query('INSERT INTO reports (id, site_id, user_id, title) VALUES ($1, $2, $3, $4)',
+      [rId, siteId, uid, 'deletable']);
+    await s.delete(`/api/sites/${siteId}/reports/${rId}`).expect(403);
+    await m.delete(`/api/sites/${siteId}/reports/${rId}`).expect(200);
+    await m.delete(`/api/sites/${siteId}/reports/${rId}`).expect(404);
+
+    const cpId = randomUUID();
+    await pool.query(
+      'INSERT INTO checkpoints (id, site_id, location_name, user_id, photo_path) VALUES ($1, $2, $3, $4, $5)',
+      [cpId, siteId, 'Gate', uid, 'missing.png']
+    );
+    await o.delete(`/api/sites/${siteId}/checkpoints/${cpId}`).expect(403);
+    await m.delete(`/api/sites/${siteId}/checkpoints/${cpId}`).expect(200);
+    const { rows } = await pool.query('SELECT id FROM checkpoints WHERE id = $1', [cpId]);
+    assert.equal(rows.length, 0);
+  });
+
+  test('purgeOldPhotos expires photo files after 30 days but keeps records', async () => {
+    const { purgeOldPhotos } = await import('../src/purge.js');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'onpost-purge-test-'));
+    fs.writeFileSync(path.join(dir, 'old.png'), PNG);
+    fs.writeFileSync(path.join(dir, 'new.png'), PNG);
+    const { rows: ou } = await pool.query('SELECT id FROM users WHERE email = $1', ['officer@test.com']);
+    const oldId = randomUUID(), newId = randomUUID();
+    await pool.query(
+      'INSERT INTO checkpoints (id, site_id, location_name, user_id, photo_path, created_at) VALUES ($1, $2, $3, $4, $5, $6)',
+      [oldId, siteId, 'Old gate', ou[0].id, 'old.png', new Date(Date.now() - 31 * 86400000)]
+    );
+    await pool.query(
+      'INSERT INTO checkpoints (id, site_id, location_name, user_id, photo_path, created_at) VALUES ($1, $2, $3, $4, $5, $6)',
+      [newId, siteId, 'New gate', ou[0].id, 'new.png', new Date(Date.now() - 86400000)]
+    );
+
+    const purged = await purgeOldPhotos(pool, dir);
+    assert.equal(purged, 1);
+    assert.ok(!fs.existsSync(path.join(dir, 'old.png')), 'expired photo file deleted');
+    assert.ok(fs.existsSync(path.join(dir, 'new.png')), 'recent photo file kept');
+    const { rows } = await pool.query(
+      'SELECT id, photo_path FROM checkpoints WHERE id IN ($1, $2)', [oldId, newId]
+    );
+    assert.equal(rows.length, 2, 'both checkpoint records survive');
+    assert.equal(rows.find((r) => r.id === oldId).photo_path, null);
+    assert.equal(rows.find((r) => r.id === newId).photo_path, 'new.png');
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+});
+
 describe('first-user bootstrap', () => {
   test('first registration on a fresh database becomes master', async () => {
     const db = newDb();
